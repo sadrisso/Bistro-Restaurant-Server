@@ -64,6 +64,12 @@ async function run() {
 
         app.post("/users", async (req, res) => {
             const user = req.body;
+            const query = { email: user?.email }
+            const existingUser = await userCollection.findOne(query)
+
+            if (existingUser) {
+                return res.send({ messege: "User already exist" })
+            }
             const result = await userCollection.insertOne(user)
             res.send(result)
         })
@@ -71,7 +77,7 @@ async function run() {
 
         app.delete("/cartItems/:id", async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await cartCollection.deleteOne(query)
             res.send(result)
         })
