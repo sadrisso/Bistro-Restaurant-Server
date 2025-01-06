@@ -1,13 +1,14 @@
 const express = require('express');
 const cors = require('cors');
-require('dotenv').config()
-const app = express()
+const jwt = require('jsonwebtoken');
+require('dotenv').config();
+const app = express();
 const port = process.env.PORT || 5000;
 
 
 //middlewares start
-app.use(cors())
-app.use(express.json())
+app.use(cors());
+app.use(express.json());
 //middlewares end
 
 
@@ -61,6 +62,13 @@ async function run() {
         })
 
 
+        app.post("/jwt", async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" })
+            res.send({ token })
+        })
+
+
         app.post("/cartItems", async (req, res) => {
             const cartItem = req.body;
             const result = await cartCollection.insertOne(cartItem)
@@ -81,9 +89,9 @@ async function run() {
         })
 
 
-        app.patch("/users/admin/:id", async (req, res) => {
+        app.patch("/user/admin/:id", async (req, res) => {
             const id = req.params.id;
-            const filter = {_id: new ObjectId(id)}
+            const filter = { _id: new ObjectId(id) }
             const updatedDoc = {
                 $set: {
                     role: "admin"
@@ -104,7 +112,7 @@ async function run() {
 
         app.delete("/users/:id", async (req, res) => {
             const id = req.params.id
-            const query = {_id: new ObjectId(id)}
+            const query = { _id: new ObjectId(id) }
             const result = await userCollection.deleteOne(query)
             res.send(result)
         })
