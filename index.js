@@ -42,9 +42,44 @@ async function run() {
         })
 
 
-        app.get("/users", async (req, res) => {
+        const verifyToken = (req, res, next) => {
+            console.log("Inside verify token", req.headers.authorization)
+            if (!req.headers.authorization) {
+                return res.status(401).send({ message: "Forbidden access!" })
+            }
+
+            const token = req.headers.authorization.split(" ")[1]
+
+            jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ message: "forbidden access" })
+                }
+                req.decoded = decoded
+                next()
+            })
+        }
+
+        app.get("/users", verifyToken, async (req, res) => {
             const result = await userCollection.find().toArray()
             res.send(result)
+        })
+
+
+        app.get("/users/admin/:email", verifyToken, async (req, res) => {
+            const email = req.params?.email;
+            if (email !== req.decoded?.email) {
+                return res.status(403).send({ message: "unauthorized access" })
+            }
+
+            const query = { email: email }
+            const user = await userCollection.findOne(query)
+
+            let admin = false;
+            if (user) {
+                admin = user?.role === "admin"
+            }
+
+            res.send({ admin })
         })
 
 
