@@ -36,12 +36,8 @@ async function run() {
         const cartCollection = client.db("bistroDB").collection("cartItems")
 
 
-        app.get("/menu", async (req, res) => {
-            const result = await menuCollection.find().toArray();
-            res.send(result)
-        })
 
-
+        //middlewares starts from here
         const verifyToken = (req, res, next) => {
             // console.log("Inside verify token", req.headers.authorization)
             if (!req.headers.authorization) {
@@ -61,18 +57,74 @@ async function run() {
 
         const verifyAdmin = async (req, res, next) => {
             const email = req.decoded.email
-            const query = {email: email}
+            const query = { email: email }
             const user = await userCollection.findOne(query)
             const isAdmin = user?.role === "admin"
 
             if (!isAdmin) {
-                return res.status(403).send({message: 'forbidden access'})
+                return res.status(403).send({ message: 'forbidden access' })
             }
             next()
         }
+        //middlewares ends here
 
+
+        //jwt token releted api
+        app.post("/jwt", async (req, res) => {
+            const user = req.body;
+            const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" })
+            res.send({ token })
+        })
+
+
+
+        //menu releted apis starts from here
+        app.get("/menu", async (req, res) => {
+            const result = await menuCollection.find().toArray();
+            res.send(result)
+        })
+
+        app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
+            const menuItem = req.body;
+            const result = await menuCollection.insertOne(menuItem)
+            res.send(result)
+        })
+
+        app.delete("/menu/:id", verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) }
+            const result = await menuCollection.deleteOne(query)
+            res.send(result)
+        })
+        //menu releted apis ends from here
+
+
+
+
+        //users releted apis starts from here
         app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray()
+            res.send(result)
+        })
+
+
+        app.post("/users", async (req, res) => {
+            const user = req.body;
+            const query = { email: user?.email }
+            const existingUser = await userCollection.findOne(query)
+
+            if (existingUser) {
+                return res.send({ messege: "User already exist" })
+            }
+            const result = await userCollection.insertOne(user)
+            res.send(result)
+        })
+
+
+        app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
+            const id = req.params.id
+            const query = { _id: new ObjectId(id) }
+            const result = await userCollection.deleteOne(query)
             res.send(result)
         })
 
@@ -95,54 +147,6 @@ async function run() {
         })
 
 
-        app.get("/reviews", async (req, res) => {
-            const result = await reviewCollection.find().toArray();
-            res.send(result)
-        })
-
-
-        app.get("/cartItems", async (req, res) => {
-            const email = req.query.email;
-            const query = { email: email };
-            const result = await cartCollection.find(query).toArray()
-            res.send(result)
-        })
-
-
-        app.post("/jwt", async (req, res) => {
-            const user = req.body;
-            const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: "1h" })
-            res.send({ token })
-        })
-
-
-        app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
-            const menuItem = req.body;
-            const result = await menuCollection.insertOne(menuItem)
-            res.send(result)
-        })
-
-
-        app.post("/cartItems", async (req, res) => {
-            const cartItem = req.body;
-            const result = await cartCollection.insertOne(cartItem)
-            res.send(result)
-        })
-
-
-        app.post("/users", async (req, res) => {
-            const user = req.body;
-            const query = { email: user?.email }
-            const existingUser = await userCollection.findOne(query)
-
-            if (existingUser) {
-                return res.send({ messege: "User already exist" })
-            }
-            const result = await userCollection.insertOne(user)
-            res.send(result)
-        })
-
-
         app.patch("/user/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
@@ -155,6 +159,24 @@ async function run() {
             const result = await userCollection.updateOne(filter, updatedDoc)
             res.send(result)
         })
+        //users releted apis ends here
+
+
+
+        //cart releted apis starts from here
+        app.get("/cartItems", async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await cartCollection.find(query).toArray()
+            res.send(result)
+        })
+
+
+        app.post("/cartItems", async (req, res) => {
+            const cartItem = req.body;
+            const result = await cartCollection.insertOne(cartItem)
+            res.send(result)
+        })
 
 
         app.delete("/cartItems/:id", async (req, res) => {
@@ -163,13 +185,18 @@ async function run() {
             const result = await cartCollection.deleteOne(query)
             res.send(result)
         })
+        //carts releted apis ends here
 
-        app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
-            const id = req.params.id
-            const query = { _id: new ObjectId(id) }
-            const result = await userCollection.deleteOne(query)
+
+
+        //review releted apis starts from here
+        app.get("/reviews", async (req, res) => {
+            const result = await reviewCollection.find().toArray();
             res.send(result)
         })
+        //review releted apis ends here
+
+
 
 
         // Send a ping to confirm a successful connection
