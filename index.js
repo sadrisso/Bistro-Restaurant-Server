@@ -43,7 +43,7 @@ async function run() {
 
 
         const verifyToken = (req, res, next) => {
-            console.log("Inside verify token", req.headers.authorization)
+            // console.log("Inside verify token", req.headers.authorization)
             if (!req.headers.authorization) {
                 return res.status(401).send({ message: "Forbidden access!" })
             }
@@ -59,7 +59,19 @@ async function run() {
             })
         }
 
-        app.get("/users", verifyToken, async (req, res) => {
+        const verifyAdmin = async (req, res, next) => {
+            const email = req.decoded.email
+            const query = {email: email}
+            const user = await userCollection.findOne(query)
+            const isAdmin = user?.role === "admin"
+
+            if (!isAdmin) {
+                return res.status(403).send({message: 'forbidden access'})
+            }
+            next()
+        }
+
+        app.get("/users", verifyToken, verifyAdmin, async (req, res) => {
             const result = await userCollection.find().toArray()
             res.send(result)
         })
@@ -104,6 +116,13 @@ async function run() {
         })
 
 
+        app.post("/menu", verifyToken, verifyAdmin, async (req, res) => {
+            const menuItem = req.body;
+            const result = await menuCollection.insertOne(menuItem)
+            res.send(result)
+        })
+
+
         app.post("/cartItems", async (req, res) => {
             const cartItem = req.body;
             const result = await cartCollection.insertOne(cartItem)
@@ -124,7 +143,7 @@ async function run() {
         })
 
 
-        app.patch("/user/admin/:id", async (req, res) => {
+        app.patch("/user/admin/:id", verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const updatedDoc = {
@@ -145,7 +164,7 @@ async function run() {
             res.send(result)
         })
 
-        app.delete("/users/:id", async (req, res) => {
+        app.delete("/users/:id", verifyToken, verifyAdmin, async (req, res) => {
             const id = req.params.id
             const query = { _id: new ObjectId(id) }
             const result = await userCollection.deleteOne(query)
