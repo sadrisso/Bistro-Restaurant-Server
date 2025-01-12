@@ -224,6 +224,19 @@ async function run() {
 
 
 
+        app.get("/admin-stats", async (req, res) => {
+            const menu = await menuCollection.estimatedDocumentCount()
+            const user = await userCollection.estimatedDocumentCount()
+            const review = await reviewCollection.estimatedDocumentCount()
+
+            res.send({
+                menu,
+                user,
+                review
+            })
+        })
+
+
 
         // Send a ping to confirm a successful connection
         await client.db("admin").command({ ping: 1 });
